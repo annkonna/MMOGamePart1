@@ -6,5 +6,5 @@ function updatePlayers() {
 
 function redirect() {
 //    setTimeout('window.location.href="game4.html"', 0); 
-  window.location.href="game4.html"
+  window.location.href="game.html"
 }

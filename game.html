@@ -3,26 +3,183 @@
 <style>
 
 canvas {
-    border: 1px solid darkgray;
-    background-color: lightgray;
+    background-color: olivedrab;
+}
+
+body {
+    background-color: olivedrab;
 }
 
 </style>
 <body onload="startGame()">
 <script>
 
+var myGamePiece;
+var myObstacles=[];
+var myScore;
+
 function startGame() {
-    myGameArea.start()
+  myGameArea.start();
+  myGamePiece = new component(30,30,"player.gif", myGameArea.canvas.width/2, myGameArea.canvas.height/2, "image");
+  myScore = new component("30px", "Consolas", "black", 280, 40, "text");
+  myBackground = new component(1500, 1000, "game_background.gif", 0, 0, "image");
+  otherGamePiece1 = new component(30,30,"other-player.gif", Math.random()*myGameArea.canvas.width, Math.random()*myGameArea.canvas.height, "image"); 
+  otherGamePiece2 = new component(30,30,"other-player.gif", Math.random()*myGameArea.canvas.width, Math.random()*myGameArea.canvas.height, "image"); 
+  otherGamePiece3 = new component(30,30,"other-player.gif", Math.random()*myGameArea.canvas.width, Math.random()*myGameArea.canvas.height, "image"); 
 }
 
 var myGameArea = {
-    canvas: document.createElement("canvas"),
-    start: function() {
-        this.canvas.width = 480;
-        this.canvas.height = 270;
-        this.context = this.canvas.getContext("2d");
-        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+  canvas : document.createElement("canvas"),
+  start : function() {
+//    this.canvas.width = 480;
+//    this.canvas.height = 270;
+    this.canvas.width = document.body.clientWidth;
+    this.canvas.height = window.innerHeight-30;
+    this.context = this.canvas.getContext("2d");
+    document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+    this.interval = setInterval(updateGameArea, 20);
+    this.frameNo = 0;
+    this.crash = 0;
+    window.addEventListener('keydown', function (e) {
+      myGameArea.key = e.keyCode;
+    })
+    window.addEventListener('keyup', function (e) {
+      myGameArea.key = false;
+    })
+  },
+  clear : function() {
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  },
+  stop : function() {
+    myGameArea.clear();
+    myBackground.update();
+    if (myGameArea.frameNo==1500) {
+      myScore.text = "You Won!!! Successfully Survived " + myGameArea.frameNo/50 + " seconds.";
+    } else {
+      myScore.text = "Game Over!!! Survival Time (secs): " + myGameArea.frameNo/50;
     }
+    myScore.update();
+    clearInterval(this.interval);
+  }
+}
+
+function everyinterval(n) {
+  if ((myGameArea.frameNo / n) % 1 == 0) {return true;}
+  return false;
+}
+
+function component(width, height, color, x, y, type) {
+  this.type = type;
+  if (type == "image") {
+    this.image = new Image();
+    this.image.src = color;
+  }
+  this.width = width;
+  this.height = height;
+  this.speedX = 0;
+  this.speedY = 0;
+  this.x = x;
+  this.y = y; 
+  this.update = function(){
+    ctx = myGameArea.context;
+    if (type == "image") {
+      ctx.drawImage(this.image, 
+        this.x, 
+        this.y,
+        this.width, this.height);
+    } else if (this.type == "text") {
+      ctx.fillStyle = color;
+      ctx.font = this.width + " " + this.height;
+      ctx.fillText(this.text, this.x, this.y);
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+  }
+  this.newPos = function() {
+    this.x += this.speedX;
+    this.y += this.speedY; 
+  } 
+  this.crashWith = function(otherobj) {
+    var myleft = this.x;
+    var myright = this.x + (this.width);
+    var mytop = this.y;
+    var mybottom = this.y + (this.height);
+    var otherleft = otherobj.x;
+    var otherright = otherobj.x + (otherobj.width);
+    var othertop = otherobj.y;
+    var otherbottom = otherobj.y + (otherobj.height);
+    var crash = true;
+    if ((mybottom < othertop) ||
+    (mytop > otherbottom) ||
+    (myright < otherleft) ||
+    (myleft > otherright)) {
+      crash = false;
+    }
+    return crash;
+  }
+}
+
+function updateGameArea() {
+    var x, y;
+    for (i = 0; i < myObstacles.length; i += 1) {
+        if (myGamePiece.crashWith(myObstacles[i])) {
+          myGameArea.crash += 1;
+          if (myGameArea.crash==250) {
+            myGameArea.crash=0;
+            myGameArea.stop();
+            return;
+          }
+        } 
+    }
+    if (myGameArea.frameNo == 1500) {
+      myGameArea.stop();
+      return;
+    }
+    myGameArea.clear();
+    myBackground.update();
+    myGamePiece.speedX = 0;
+    myGamePiece.speedY = 0; 
+    if (myGameArea.key && myGameArea.key == 37) {myGamePiece.speedX = -3; }
+    if (myGameArea.key && myGameArea.key == 39) {myGamePiece.speedX = 3; }
+    if (myGameArea.key && myGameArea.key == 38) {myGamePiece.speedY = -3; }
+    if (myGameArea.key && myGameArea.key == 40) {myGamePiece.speedY = 3; }
+    myGameArea.frameNo += 1;
+    if (myGameArea.frameNo == 1 || everyinterval(250)) {
+        x = myGameArea.canvas.width;
+        minHeight = 20;
+        maxHeight = 500;
+        height = Math.floor(Math.random()*(maxHeight-minHeight+1)+minHeight);
+        minGap = 50;
+        maxGap = 200;
+        gap = Math.floor(Math.random()*(maxGap-minGap+1)+minGap);
+        myObstacles.push(new component(500, height, "red", x, 0));
+        myObstacles.push(new component(500, x - height - gap, "red", x, height + gap));
+    }
+    for (i = 0; i < myObstacles.length; i += 1) {
+        myObstacles[i].x += -3;
+        myObstacles[i].update();
+    }
+    myScore.text = "SURVIVAL TIME PERIOD (secs): " + myGameArea.frameNo/50;
+    myScore.update();
+    myGamePiece.newPos(); 
+    myGamePiece.update();
+    if (everyinterval(30)) {
+      otherGamePiece1.dir = Math.floor(Math.random()*4);
+      otherGamePiece2.dir = Math.floor(Math.random()*4);
+      otherGamePiece3.dir = Math.floor(Math.random()*4);
+    }  
+    var dir1 = otherGamePiece1.dir;    
+    var dir2 = otherGamePiece2.dir;    
+    var dir3 = otherGamePiece3.dir;    
+    if (dir1==0) {otherGamePiece1.x+=1;} else if (dir1==1) {otherGamePiece1.y+=1;} else if (dir1==2) {otherGamePiece1.x-=1;} else {otherGamePiece1.y-=1;}
+    if (dir2==0) {otherGamePiece2.x+=1;} else if (dir2==1) {otherGamePiece2.y+=1;} else if (dir2==2) {otherGamePiece2.x-=1;} else {otherGamePiece2.y-=1;}
+    if (dir3==0) {otherGamePiece3.x+=1;} else if (dir3==1) {otherGamePiece3.y+=1;} else if (dir3==2) {otherGamePiece3.x-=1;} else {otherGamePiece3.y-=1;}
+//    otherGamePiece.x+=3;  
+    otherGamePiece1.update();
+    otherGamePiece2.update();
+    otherGamePiece3.update();
+    myBackground.newPos(); 
 }
 
 </script>
